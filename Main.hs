@@ -45,7 +45,7 @@ main = do
     let (packages_file, wd) =
             case args of
                 []      -> (Nothing, ".")
-                [pf]    -> (Just pf, ".")
+                [wd]    -> (Nothing, wd)
                 [pf,wd] -> (Just pf, wd)
     packages <-
         case packages_file of
