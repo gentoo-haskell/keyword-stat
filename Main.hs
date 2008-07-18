@@ -49,7 +49,7 @@ main = do
                 [pf,wd] -> (Just pf, wd)
     packages <-
         case packages_file of
-            Just pf -> lines <$> readFile pf
+            Just pf -> filter (not . L.isPrefixOf "#") . lines <$> readFile pf
             Nothing -> findPackages wd
     let ebuilds = zip (map extractCPVR packages) packages
     pretty prettyColumns prettyHeader
