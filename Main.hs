@@ -27,6 +27,7 @@ showArch (Masked a) = '~' : a
 instance Ord Arch where
     compare a b = compare (fromArch a) (fromArch b)
 
+-- the arches where we have ghc
 arches :: [Arch]
 arches = map toArch . sort . words $ "alpha amd64 hppa ia64 ppc ppc64 sparc x86" 
 
@@ -40,11 +41,19 @@ prettyHeader = "package" : map fromArch arches
 
 main :: IO ()
 main = do
-    [arg,wd] <- getArgs
-    packages <- lines <$> readFile arg
-    let ebuilds = zip (map extractCPV packages) packages
+    args <- getArgs
+    let (packages_file, wd) =
+            case args of
+                []      -> (Nothing, ".")
+                [pf]    -> (Just pf, ".")
+                [pf,wd] -> (Just pf, wd)
+    packages <-
+        case packages_file of
+            Just pf -> lines <$> readFile pf
+            Nothing -> findPackages wd
+    let ebuilds = zip (map extractCPVR packages) packages
     pretty prettyColumns prettyHeader
-    pretty prettyColumns (map (map (const '-')) prettyHeader)
+    pretty prettyColumns (map (\c -> replicate (fromAlign c) '-') prettyColumns)
 
     forM_ ebuilds $ \(package, package_name) -> do
         let ebuild_file = wd </> cpvToEbuild package
@@ -63,12 +72,29 @@ main = do
             arches0 = doit arches as
             doit (areal:arealrest) (a:arest) | sameArch areal a = a : doit arealrest arest
                                              | otherwise = toArch "" : doit arealrest (a:arest)
-            doit [] [] = []
+            doit _ _ = []
         pretty prettyColumns (package_name : map showArch arches0)
 
+findPackages :: FilePath -> IO [String]
+findPackages portdir = do
+    categories <- sort <$> getDirectories portdir
+    concat <$> (forM categories $ \cat -> do
+        packages <- sort <$> getDirectories (portdir </> cat)
+        concat <$> (forM packages $ \pkg -> do
+            files <- sort <$> getDirectoryContents (portdir </> cat </> pkg)
+            return [ cat </> (reverse (drop 7 (reverse file)))
+                   | file <- files
+                   , ".ebuild" `L.isSuffixOf` file
+                   ]))
+    where
+    getDirectories :: FilePath -> IO [String]
+    getDirectories fp = do
+        files <- filter (`notElem` [".", ".."]) <$> getDirectoryContents fp
+        filterM (doesDirectoryExist . (fp </>)) files
 
-packageRegex = R.compile "^(.*)/(.*)-([\\d.]+)$" []
-keywordRegex = R.compile "^KEYWORDS=\"(.*)\"$" [R.multiline]
+packageRegex = R.compile "^(.*)/(.*?)-([\\d.]+)([-_].*?)?$" []
+keywordRegex = R.compile "^KEYWORDS=\"(.*)\".*" [R.multiline]
+versionRegex name = R.compile ("^" ++ name ++ "-(.*).ebuild$") []
 
 pretty :: [Alignment] -> [String] -> IO ()
 pretty padding text = do
@@ -89,13 +115,21 @@ pretty padding text = do
                             putStr t
                             putStr $ replicate right c
 
-extractCPV text = (c,p,v)
-    where (Just [_,c,p,v]) = R.match packageRegex text []
+extractCPVR_m text =
+    case R.match packageRegex text [] of
+        Just [_,c,p,v] -> Just (c,p,v,"")
+        Just [_,c,p,v,r] -> Just (c,p,v,r)
+        Nothing -> Nothing
+
+extractCPVR text =
+    case extractCPVR_m text of
+        Just x -> x
+        Nothing -> error text
 
 extractKeywords text = map toArch $ words k
     where (Just [_,k]) = R.match keywordRegex text []
 
-cpvToEbuild (c,p,v) = c </> p </> p <-> v ++ ".ebuild"
+cpvToEbuild (c,p,v,r) = c </> p </> p <-> v ++ r ++ ".ebuild"
 
 (</>) :: String -> String -> String
 b </> n = b ++ '/':n
