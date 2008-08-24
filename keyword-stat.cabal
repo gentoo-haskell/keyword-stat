@@ -1,0 +1,15 @@
+name:                keyword-stat
+version:             0.1
+synopsis:            <Project description>
+description:         <Project description>
+category:            System
+license:             BSD3
+-- license-file:        LICENSE
+author:              Lennart Kolmodin
+maintainer:          kolmodin@gentoo.org
+build-Depends:       base, directory, haskell98, pcre-light
+build-type:          Simple
+
+executable:          keyword-stat
+main-is:             Main.hs
+ghc-options:         
