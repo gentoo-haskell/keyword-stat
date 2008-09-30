@@ -10,35 +10,6 @@ import Control.Monad
 import System
 import System.Directory
 
-data Arch = Stable String | Masked String deriving (Eq,Show)
-fromArch (Stable a) = a
-fromArch (Masked a) = a
-
-toArch str =
-    case str of
-        ('~':arch) -> Masked arch
-        _          -> Stable str
-
-sameArch a b = (fromArch a) == (fromArch b)
-
-showArch (Stable a) = a
-showArch (Masked a) = '~' : a
-
-instance Ord Arch where
-    compare a b = compare (fromArch a) (fromArch b)
-
--- the arches where we have ghc
-arches :: [Arch]
-arches = map toArch . sort . words $ "alpha amd64 hppa ia64 ppc ppc64 sparc x86" 
-
-data Alignment
-        = LeftAlign   {                   fromAlign :: Int }
-        | CenterAlign { fillChar :: Char, fromAlign :: Int }
-        | RightAlign  {                   fromAlign :: Int }
-
-prettyColumns = LeftAlign 35 : map (\arch -> RightAlign (2 + length (fromArch arch))) arches
-prettyHeader = "package" : map fromArch arches
-
 main :: IO ()
 main = do
     args <- getArgs
@@ -96,25 +67,6 @@ packageRegex = R.compile "^(.*)/(.*?)-([\\d.]+)([-_].*?)?$" []
 keywordRegex = R.compile "^KEYWORDS=\"(.*)\".*" [R.multiline]
 versionRegex name = R.compile ("^" ++ name ++ "-(.*).ebuild$") []
 
-pretty :: [Alignment] -> [String] -> IO ()
-pretty padding text = do
-    mapM_ (uncurry pretty') (L.intersperse (LeftAlign 1," ") (zip padding text))
-    putStrLn ""
-    where
-    pretty' (LeftAlign p) t | p > 0 = do
-                            putStr t
-                            putStr $ replicate (p - length t) ' '
-    pretty' (RightAlign p) t | p > 0 = do
-                            putStr $ replicate (p - length t) ' '
-                            putStr t
-    pretty' (CenterAlign c p) t | p > 0 = do
-                            let both = max 0 (p - length t)
-                                left = both `div` 2
-                                right = both - left
-                            putStr $ replicate left c
-                            putStr t
-                            putStr $ replicate right c
-
 extractCPVR_m text =
     case R.match packageRegex text [] of
         Just [_,c,p,v] -> Just (c,p,v,"")
@@ -136,3 +88,60 @@ b </> n = b ++ '/':n
 
 (<->) :: String -> String -> String
 b <-> n = b ++ '-':n
+
+-----------------------------------------------------------------------
+-- Arches
+-----------------------------------------------------------------------
+
+data Arch = Stable String | Masked String deriving (Eq,Show)
+fromArch (Stable a) = a
+fromArch (Masked a) = a
+
+toArch str =
+    case str of
+        ('~':arch) -> Masked arch
+        _          -> Stable str
+
+sameArch a b = (fromArch a) == (fromArch b)
+
+showArch (Stable a) = a
+showArch (Masked a) = '~' : a
+
+instance Ord Arch where
+    compare a b = compare (fromArch a) (fromArch b)
+
+-- the arches where we have ghc
+arches :: [Arch]
+arches = map toArch . sort . words $ "alpha amd64 hppa ia64 ppc ppc64 sparc x86" 
+
+
+-----------------------------------------------------------------------
+-- Pretty columns
+-----------------------------------------------------------------------
+
+data Alignment
+        = LeftAlign   {                   fromAlign :: Int }
+        | CenterAlign { fillChar :: Char, fromAlign :: Int }
+        | RightAlign  {                   fromAlign :: Int }
+
+prettyColumns = LeftAlign 35 : map (\arch -> RightAlign (2 + length (fromArch arch))) arches
+prettyHeader = "package" : map fromArch arches
+
+pretty :: [Alignment] -> [String] -> IO ()
+pretty padding text = do
+    mapM_ (uncurry pretty') (L.intersperse (LeftAlign 1," ") (zip padding text))
+    putStrLn ""
+    where
+    pretty' (LeftAlign p) t | p > 0 = do
+                            putStr t
+                            putStr $ replicate (p - length t) ' '
+    pretty' (RightAlign p) t | p > 0 = do
+                            putStr $ replicate (p - length t) ' '
+                            putStr t
+    pretty' (CenterAlign c p) t | p > 0 = do
+                            let both = max 0 (p - length t)
+                                left = both `div` 2
+                                right = both - left
+                            putStr $ replicate left c
+                            putStr t
+                            putStr $ replicate right c
