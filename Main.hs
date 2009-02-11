@@ -23,7 +23,7 @@ main = do
     ebuilds <-
         case packages_file of
             Just pf -> do pkgs <- filter (not . L.isPrefixOf "#") . lines <$> readFile pf
-                          mapM extractCPVR_pkgLine pkgs
+                          return $ zip (map  extractCPVR_pkgLine pkgs) pkgs
             Nothing -> do pkgs <- findPackages wd
                           return $ zip (map extractCPVR pkgs) pkgs
     -- let ebuilds = zip (map extractCPVR packages) packages
@@ -77,8 +77,8 @@ versionRegex name = R.compile ("^" ++ name ++ "-(.*).ebuild$") []
 
 extractCPVR_pkgLine pkg_line =
     case R.match packageRegex pkg_line [] of
-      Just [_, cat,pkg,ver] -> return (pkg_line, cat </> pkg </> pkg <-> ver)
-      Just [_, cat,pkg,ver,suf] -> return (pkg_line, cat </> pkg </> pkg <-> ver ++ suf)
+      Just [_, cat,pkg,ver] -> cat </> pkg </> pkg <-> ver
+      Just [_, cat,pkg,ver,suf] -> cat </> pkg </> pkg <-> ver ++ suf
       x -> error (show x)
  
 extractCPVR_m text =
