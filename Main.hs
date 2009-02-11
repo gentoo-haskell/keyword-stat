@@ -1,4 +1,4 @@
-module Main where
+module Main ( main ) where
 
 --import qualified Data.ByteString as B
 
@@ -9,6 +9,8 @@ import Control.Applicative
 import Control.Monad
 import System
 import System.Directory
+import System.FilePath ( splitDirectories )
+import System.IO.Unsafe ( unsafeInterleaveIO )
 
 main :: IO ()
 main = do
@@ -18,19 +20,21 @@ main = do
                 []      -> (Nothing, ".")
                 [wd]    -> (Nothing, wd)
                 [pf,wd] -> (Just pf, wd)
-    packages <-
+    ebuilds <-
         case packages_file of
-            Just pf -> filter (not . L.isPrefixOf "#") . lines <$> readFile pf
-            Nothing -> findPackages wd
-    let ebuilds = zip (map extractCPVR packages) packages
+            Just pf -> do pkgs <- filter (not . L.isPrefixOf "#") . lines <$> readFile pf
+                          mapM extractCPVR_pkgLine pkgs
+            Nothing -> do pkgs <- findPackages wd
+                          return $ zip (map extractCPVR pkgs) pkgs
+    -- let ebuilds = zip (map extractCPVR packages) packages
     pretty prettyColumns prettyHeader
     pretty prettyColumns (map (\c -> replicate (fromAlign c) '-') prettyColumns)
 
-    forM_ ebuilds $ \(package, package_name) -> do
-        let ebuild_file = wd </> cpvToEbuild package
+    forM_ ebuilds $ \(package_name, package_path) -> do
+        let ebuild_file = package_path ++ ".ebuild"
         exists <- doesFileExist ebuild_file
         if not exists
-         then doesNotExist package_name
+         then doesNotExist package_path
          else printIt package_name ebuild_file
     where
     doesNotExist package_name = do
@@ -46,32 +50,43 @@ main = do
             doit _ _ = []
         pretty prettyColumns (package_name : map showArch arches0)
 
-findPackages :: FilePath -> IO [String]
-findPackages portdir = do
-    categories <- sort <$> getDirectories portdir
-    concat <$> (forM categories $ \cat -> do
-        packages <- sort <$> getDirectories (portdir </> cat)
-        concat <$> (forM packages $ \pkg -> do
-            files <- sort <$> getDirectoryContents (portdir </> cat </> pkg)
-            return [ cat </> (reverse (drop 7 (reverse file)))
-                   | file <- files
-                   , ".ebuild" `L.isSuffixOf` file
-                   ]))
+findPackages :: FilePath -> IO [FilePath]
+findPackages dir = do
+    (dirs,files) <- getContent dir
+    let locals = sort (cwdEbuilds files)
+    rec <- concat <$> mapM (unsafeInterleaveIO . findPackages) dirs
+    return (locals ++ rec)
     where
-    getDirectories :: FilePath -> IO [String]
-    getDirectories fp = do
-        files <- filter (`notElem` [".", ".."]) <$> getDirectoryContents fp
-        filterM (doesDirectoryExist . (fp </>)) files
+    cwdEbuilds :: [FilePath] -> [FilePath]
+    cwdEbuilds files =
+            [ reverse (drop 7 (reverse file))
+            | file <- files
+            , ".ebuild" `L.isSuffixOf` file
+            ]
+    getContent :: FilePath -> IO ([FilePath], [FilePath])
+    getContent fp = do
+        items0 <- filter (`notElem` [".", "..", "_darcs"]) <$> getDirectoryContents fp
+        let items = map (fp </>) items0
+        dirs <- filterM doesDirectoryExist items
+        files <- filterM doesFileExist items
+        return (dirs,files)
 
 packageRegex = R.compile "^(.*)/(.*?)-([\\d.]+)([-_].*?)?$" []
 keywordRegex = R.compile "^KEYWORDS=\"(.*)\".*" [R.multiline]
 versionRegex name = R.compile ("^" ++ name ++ "-(.*).ebuild$") []
 
+extractCPVR_pkgLine pkg_line =
+    case R.match packageRegex pkg_line [] of
+      Just [_, cat,pkg,ver] -> return (pkg_line, cat </> pkg </> pkg <-> ver)
+      Just [_, cat,pkg,ver,suf] -> return (pkg_line, cat </> pkg </> pkg <-> ver ++ suf)
+      x -> error (show x)
+ 
 extractCPVR_m text =
-    case R.match packageRegex text [] of
-        Just [_,c,p,v] -> Just (c,p,v,"")
-        Just [_,c,p,v,r] -> Just (c,p,v,r)
-        Nothing -> Nothing
+    case splitDirectories text of
+        [_, category, _package, pvr] -> Just (category </> pvr)
+        [_, _package, pvr] -> Just pvr
+        [_, pvr] -> Just pvr
+        x -> Just ("?:" ++ text)
 
 extractCPVR text =
     case extractCPVR_m text of

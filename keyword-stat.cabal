@@ -7,7 +7,7 @@ license:             BSD3
 -- license-file:        LICENSE
 author:              Lennart Kolmodin
 maintainer:          kolmodin@gentoo.org
-build-Depends:       base, directory, haskell98, pcre-light
+build-Depends:       base, directory, haskell98, pcre-light, filepath
 build-type:          Simple
 
 executable:          keyword-stat
