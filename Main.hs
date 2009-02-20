@@ -23,7 +23,10 @@ main = do
     ebuilds <-
         case packages_file of
             Just pf -> do pkgs <- filter (not . L.isPrefixOf "#") . lines <$> readFile pf
-                          return $ zip (map  extractCPVR_pkgLine pkgs) pkgs
+			  let ps = map extractCPVR_pkgLine pkgs
+			      name (cat,pkg,ver) = cat </> pkg <-> ver
+			      path (cat,pkg,ver) = cat </> pkg </> pkg <-> ver
+                          return $ zip (map name ps) (map path ps)
             Nothing -> do pkgs <- findPackages wd
                           return $ zip (map extractCPVR pkgs) pkgs
     -- let ebuilds = zip (map extractCPVR packages) packages
@@ -31,10 +34,10 @@ main = do
     pretty prettyColumns (map (\c -> replicate (fromAlign c) '-') prettyColumns)
 
     forM_ ebuilds $ \(package_name, package_path) -> do
-        let ebuild_file = package_path ++ ".ebuild"
+        let ebuild_file = wd </> package_path ++ ".ebuild"
         exists <- doesFileExist ebuild_file
         if not exists
-         then doesNotExist package_path
+         then doesNotExist package_name
          else printIt package_name ebuild_file
     where
     doesNotExist package_name = do
@@ -77,8 +80,8 @@ versionRegex name = R.compile ("^" ++ name ++ "-(.*).ebuild$") []
 
 extractCPVR_pkgLine pkg_line =
     case R.match packageRegex pkg_line [] of
-      Just [_, cat,pkg,ver] -> cat </> pkg </> pkg <-> ver
-      Just [_, cat,pkg,ver,suf] -> cat </> pkg </> pkg <-> ver ++ suf
+      Just [_, cat,pkg,ver] -> (cat, pkg, ver)
+      Just [_, cat,pkg,ver,suf] -> (cat, pkg, ver ++ suf)
       x -> error (show x)
  
 extractCPVR_m text =
