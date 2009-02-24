@@ -29,7 +29,6 @@ main = do
                           return $ zip (map name ps) (map path ps)
             Nothing -> do pkgs <- findPackages wd
                           return $ zip (map extractCPVR pkgs) pkgs
-    -- let ebuilds = zip (map extractCPVR packages) packages
     pretty prettyColumns prettyHeader
     pretty prettyColumns (map (\c -> replicate (fromAlign c) '-') prettyColumns)
 
