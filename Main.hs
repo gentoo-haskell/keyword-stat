@@ -33,7 +33,7 @@ main = do
     pretty prettyColumns (map (\c -> replicate (fromAlign c) '-') prettyColumns)
 
     forM_ ebuilds $ \(package_name, package_path) -> do
-        let ebuild_file = wd </> package_path ++ ".ebuild"
+        let ebuild_file = package_path ++ ".ebuild"
         exists <- doesFileExist ebuild_file
         if not exists
          then doesNotExist package_name
@@ -84,11 +84,11 @@ extractCPVR_pkgLine pkg_line =
       x -> error (show x)
  
 extractCPVR_m text =
-    case splitDirectories text of
-        [_, category, _package, pvr] -> Just (category </> pvr)
-        [_, _package, pvr] -> Just pvr
-        [_, pvr] -> Just pvr
-        x -> Just ("?:" ++ text)
+    case reverse (splitDirectories text) of
+      (pvr:_package:category:_:_) -> Just (category </> pvr)
+      [pvr, _package, _] -> Just pvr
+      [pvr, _] -> Just pvr
+      x -> Just ("?:" ++ text)
 
 extractCPVR text =
     case extractCPVR_m text of
