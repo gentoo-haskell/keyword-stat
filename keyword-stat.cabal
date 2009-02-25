@@ -12,3 +12,4 @@ build-type:          Simple
 
 executable:          keyword-stat
 main-is:             Main.hs
+ghc-options:         -Wall
