@@ -85,9 +85,16 @@ extractCPVR_pkgLine pkg_line =
  
 extractCPVR_m text =
     case reverse (splitDirectories text) of
+      -- ../gentoo-haskell/x11-wm/xmonad/xmonad-0.8
+      -- ( xmonad-0.8 : xmonad : x11-wm : .. : .. )
       (pvr:_package:category:_:_) -> Just (category </> pvr)
+      -- ./xmonad/xmonad-0.8
+      -- [ xmonad-0.8 , xmonad , . ]
       [pvr, _package, _] -> Just pvr
+      -- ./xmonad-0.8
+      -- [ xmonad-0.8 , . ]
       [pvr, _] -> Just pvr
+      -- ??
       x -> Just ("?:" ++ text)
 
 extractCPVR text =
