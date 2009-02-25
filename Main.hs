@@ -117,19 +117,25 @@ b <-> n = b ++ '-':n
 -- Arches
 -----------------------------------------------------------------------
 
-data Arch = Stable String | Masked String deriving (Eq,Show)
+data Arch
+  = Stable String
+  | Masked String
+  | Unavailable String deriving (Eq,Show)
 fromArch (Stable a) = a
 fromArch (Masked a) = a
+fromArch (Unavailable a) = a
 
 toArch str =
     case str of
         ('~':arch) -> Masked arch
+        ('-':arch) -> Unavailable arch
         _          -> Stable str
 
 sameArch a b = (fromArch a) == (fromArch b)
 
 showArch (Stable a) = a
 showArch (Masked a) = '~' : a
+showArch (Unavailable a) = '-' : a
 
 instance Ord Arch where
     compare a b = compare (fromArch a) (fromArch b)
