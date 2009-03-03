@@ -45,11 +45,11 @@ main = do
         pretty [head prettyColumns, CenterAlign '-' width] [package_name, " NOT FOUND "]
     printIt package_name ebuild_file = do
         content <- readFile ebuild_file
-        let as = sort $ extractKeywords content
-            arches0 = doit arches as
-            doit (areal:arealrest) (a:arest) | sameArch areal a = a : doit arealrest arest
-                                             | otherwise = toArch "" : doit arealrest (a:arest)
-            doit _ _ = []
+        let as = [ (fromArch a, a) | a <- extractKeywords content ]
+            arches0 = doit (map fromArch arches)
+            doit (areal:arealrest) | Just a <- lookup areal as = a : doit arealrest
+                                   | otherwise = toArch "" : doit arealrest
+            doit _ = []
         pretty prettyColumns (package_name : map showArch arches0)
 
 findPackages :: FilePath -> IO [FilePath]
