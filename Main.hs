@@ -142,7 +142,7 @@ instance Ord Arch where
 
 -- the arches where we have ghc
 arches :: [Arch]
-arches = map toArch . sort . words $ "alpha amd64 hppa ia64 ppc ppc64 sparc x86" 
+arches = map toArch . sort . words $ "alpha amd64 ia64 ppc ppc64 sparc x86 x86-fbsd"
 
 
 -----------------------------------------------------------------------
