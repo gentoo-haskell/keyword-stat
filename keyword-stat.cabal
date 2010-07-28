@@ -1,12 +1,12 @@
 name:                keyword-stat
-version:             0.2
-synopsis:            <Project description>
-description:         <Project description>
+version:             0.2.1
+synopsis:            Display keywording for ebuilds
+description:         Display keywording for ebuilds
 category:            System
 license:             BSD3
 -- license-file:        LICENSE
 author:              Lennart Kolmodin
-maintainer:          kolmodin@gentoo.org
+maintainer:          Lennart Kolmodin <kolmodin@gentoo.org>
 build-Depends:       base, directory, haskell98, pcre-light, filepath
 build-type:          Simple
 
