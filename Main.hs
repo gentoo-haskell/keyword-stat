@@ -7,7 +7,7 @@ import qualified Text.Regex.PCRE.Light.Char8 as R
 import Data.List as L
 import Control.Applicative
 import Control.Monad
-import System
+import System.Environment
 import System.Directory
 import System.FilePath ( splitDirectories )
 import System.IO.Unsafe ( unsafeInterleaveIO )
